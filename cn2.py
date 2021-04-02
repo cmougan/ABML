@@ -197,6 +197,7 @@ class CN2algorithm:
 
     def order_rules(self, dataFrame_of_rules):
         """
+
         Function to order a dataframe of rules and stats according to laplace acc and length then reindex
         the ordered frame.
         """
