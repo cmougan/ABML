@@ -8,3 +8,6 @@ gitall:
 
 try:
 	@echo $$FOO
+
+stupid:
+	python stupid.py
