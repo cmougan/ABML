@@ -3,7 +3,7 @@ black:
 
 gitall:
 	git add .
-	git commit -m $$me
+	git commit -m $$m
 	git push
 
 try:
