@@ -137,22 +137,24 @@ class SkopeRules(BaseEstimator):
         The classes labels.
     """
 
-    def __init__(self,
-                 feature_names=None,
-                 precision_min=0.5,
-                 recall_min=0.01,
-                 n_estimators=10,
-                 max_samples=.8,
-                 max_samples_features=1.,
-                 bootstrap=False,
-                 bootstrap_features=False,
-                 max_depth=3,
-                 max_depth_duplication=None,
-                 max_features=1.,
-                 min_samples_split=2,
-                 n_jobs=1,
-                 random_state=None,
-                 verbose=0):
+    def __init__(
+        self,
+        feature_names=None,
+        precision_min=0.5,
+        recall_min=0.01,
+        n_estimators=10,
+        max_samples=0.8,
+        max_samples_features=1.0,
+        bootstrap=False,
+        bootstrap_features=False,
+        max_depth=3,
+        max_depth_duplication=None,
+        max_features=1.0,
+        min_samples_split=2,
+        n_jobs=1,
+        random_state=None,
+        verbose=0,
+    ):
         self.precision_min = precision_min
         self.recall_min = recall_min
         self.feature_names = feature_names
@@ -202,43 +204,52 @@ class SkopeRules(BaseEstimator):
         n_classes = len(self.classes_)
 
         if n_classes < 2:
-            raise ValueError("This method needs samples of at least 2 classes"
-                             " in the data, but the data contains only one"
-                             " class: %r" % self.classes_[0])
+            raise ValueError(
+                "This method needs samples of at least 2 classes"
+                " in the data, but the data contains only one"
+                " class: %r" % self.classes_[0]
+            )
 
-        if not isinstance(self.max_depth_duplication, int) \
-                and self.max_depth_duplication is not None:
-            raise ValueError("max_depth_duplication should be an integer"
-                             )
+        if (
+            not isinstance(self.max_depth_duplication, int)
+            and self.max_depth_duplication is not None
+        ):
+            raise ValueError("max_depth_duplication should be an integer")
         if not set(self.classes_) == set([0, 1]):
-            warn("Found labels %s. This method assumes target class to be"
-                 " labeled as 1 and normal data to be labeled as 0. Any label"
-                 " different from 0 will be considered as being from the"
-                 " target class."
-                 % set(self.classes_))
-            y = (y > 0)
+            warn(
+                "Found labels %s. This method assumes target class to be"
+                " labeled as 1 and normal data to be labeled as 0. Any label"
+                " different from 0 will be considered as being from the"
+                " target class." % set(self.classes_)
+            )
+            y = y > 0
 
         # ensure that max_samples is in [1, n_samples]:
         n_samples = X.shape[0]
 
         if isinstance(self.max_samples, str):
-            raise ValueError('max_samples (%s) is not supported.'
-                             'Valid choices are: "auto", int or'
-                             'float' % self.max_samples)
+            raise ValueError(
+                "max_samples (%s) is not supported."
+                'Valid choices are: "auto", int or'
+                "float" % self.max_samples
+            )
 
         elif isinstance(self.max_samples, INTEGER_TYPES):
             if self.max_samples > n_samples:
-                warn("max_samples (%s) is greater than the "
-                     "total number of samples (%s). max_samples "
-                     "will be set to n_samples for estimation."
-                     % (self.max_samples, n_samples))
+                warn(
+                    "max_samples (%s) is greater than the "
+                    "total number of samples (%s). max_samples "
+                    "will be set to n_samples for estimation."
+                    % (self.max_samples, n_samples)
+                )
                 max_samples = n_samples
             else:
                 max_samples = self.max_samples
         else:  # float
-            if not (0. < self.max_samples <= 1.):
-                raise ValueError("max_samples must be in (0, 1], got %r"
-                                 % self.max_samples)
+            if not (0.0 < self.max_samples <= 1.0):
+                raise ValueError(
+                    "max_samples must be in (0, 1], got %r" % self.max_samples
+                )
             max_samples = int(self.max_samples * X.shape[0])
 
         self.max_samples_ = max_samples
@@ -249,28 +260,35 @@ class SkopeRules(BaseEstimator):
         self.estimators_features_ = []
 
         # default columns names :
-        feature_names_ = [BASE_FEATURE_NAME + x for x in
-                          np.arange(X.shape[1]).astype(str)]
+        feature_names_ = [
+            BASE_FEATURE_NAME + x for x in np.arange(X.shape[1]).astype(str)
+        ]
         if self.feature_names is not None:
-            self.feature_dict_ = {BASE_FEATURE_NAME + str(i): feat
-                                  for i, feat in enumerate(self.feature_names)}
+            self.feature_dict_ = {
+                BASE_FEATURE_NAME + str(i): feat
+                for i, feat in enumerate(self.feature_names)
+            }
         else:
-            self.feature_dict_ = {BASE_FEATURE_NAME + str(i): feat
-                                  for i, feat in enumerate(feature_names_)}
+            self.feature_dict_ = {
+                BASE_FEATURE_NAME + str(i): feat
+                for i, feat in enumerate(feature_names_)
+            }
         self.feature_names_ = feature_names_
 
         clfs = []
         regs = []
 
-        self._max_depths = self.max_depth \
-            if isinstance(self.max_depth, Iterable) else [self.max_depth]
+        self._max_depths = (
+            self.max_depth if isinstance(self.max_depth, Iterable) else [self.max_depth]
+        )
 
         for max_depth in self._max_depths:
             bagging_clf = BaggingClassifier(
                 base_estimator=DecisionTreeClassifier(
                     max_depth=max_depth,
                     max_features=self.max_features,
-                    min_samples_split=self.min_samples_split),
+                    min_samples_split=self.min_samples_split,
+                ),
                 n_estimators=self.n_estimators,
                 max_samples=self.max_samples_,
                 max_features=self.max_samples_features,
@@ -281,13 +299,15 @@ class SkopeRules(BaseEstimator):
                 # warm_start=... XXX may be added to increase computation perf.
                 n_jobs=self.n_jobs,
                 random_state=self.random_state,
-                verbose=self.verbose)
+                verbose=self.verbose,
+            )
 
             bagging_reg = BaggingRegressor(
                 base_estimator=DecisionTreeRegressor(
                     max_depth=max_depth,
                     max_features=self.max_features,
-                    min_samples_split=self.min_samples_split),
+                    min_samples_split=self.min_samples_split,
+                ),
                 n_estimators=self.n_estimators,
                 max_samples=self.max_samples_,
                 max_features=self.max_samples_features,
@@ -298,7 +318,8 @@ class SkopeRules(BaseEstimator):
                 # warm_start=... XXX may be added to increase computation perf.
                 n_jobs=self.n_jobs,
                 random_state=self.random_state,
-                verbose=self.verbose)
+                verbose=self.verbose,
+            )
 
             clfs.append(bagging_clf)
             regs.append(bagging_reg)
@@ -309,10 +330,10 @@ class SkopeRules(BaseEstimator):
                 sample_weight = check_array(sample_weight, ensure_2d=False)
             weights = sample_weight - sample_weight.min()
             contamination = float(sum(y)) / len(y)
-            y_reg = (
-                pow(weights, 0.5) * 0.5 / contamination * (y > 0) -
-                pow((weights).mean(), 0.5) * (y == 0))
-            y_reg = 1. / (1 + np.exp(-y_reg))  # sigmoid
+            y_reg = pow(weights, 0.5) * 0.5 / contamination * (y > 0) - pow(
+                (weights).mean(), 0.5
+            ) * (y == 0)
+            y_reg = 1.0 / (1 + np.exp(-y_reg))  # sigmoid
         else:
             y_reg = y  # same as an other classification bagging
 
@@ -329,41 +350,44 @@ class SkopeRules(BaseEstimator):
             self.estimators_features_ += reg.estimators_features_
 
         rules_ = []
-        for estimator, samples, features in zip(self.estimators_,
-                                                self.estimators_samples_,
-                                                self.estimators_features_):
+        for estimator, samples, features in zip(
+            self.estimators_, self.estimators_samples_, self.estimators_features_
+        ):
 
             # Create mask for OOB samples
-            mask = ~indices_to_mask(samples, n_samples)            
-                        
+            mask = ~indices_to_mask(samples, n_samples)
+
             if sum(mask) == 0:
-                warn("OOB evaluation not possible: doing it in-bag."
-                     " Performance evaluation is likely to be wrong"
-                     " (overfitting) and selected rules are likely to"
-                     " not perform well! Please use max_samples < 1.")
+                warn(
+                    "OOB evaluation not possible: doing it in-bag."
+                    " Performance evaluation is likely to be wrong"
+                    " (overfitting) and selected rules are likely to"
+                    " not perform well! Please use max_samples < 1."
+                )
                 mask = samples
             rules_from_tree = self._tree_to_rules(
-                estimator, np.array(self.feature_names_)[features])
+                estimator, np.array(self.feature_names_)[features]
+            )
 
             # XXX todo: idem without dataframe
-            X_oob = pandas.DataFrame((X[mask, :])[:, features],
-                                     columns=np.array(
-                                         self.feature_names_)[features])
+            X_oob = pandas.DataFrame(
+                (X[mask, :])[:, features],
+                columns=np.array(self.feature_names_)[features],
+            )
 
             if X_oob.shape[1] > 1:  # otherwise pandas bug (cf. issue #16363)
                 y_oob = y[mask]
                 y_oob = np.array((y_oob != 0))
 
                 # Add OOB performances to rules:
-                rules_from_tree = [(r, self._eval_rule_perf(r, X_oob, y_oob))
-                                   for r in set(rules_from_tree)]
+                rules_from_tree = [
+                    (r, self._eval_rule_perf(r, X_oob, y_oob))
+                    for r in set(rules_from_tree)
+                ]
                 rules_ += rules_from_tree
 
         # Factorize rules before semantic tree filtering
-        rules_ = [
-            tuple(rule)
-            for rule in
-            [Rule(r, args=args) for r, args in rules_]]
+        rules_ = [tuple(rule) for rule in [Rule(r, args=args) for r, args in rules_]]
 
         # keep only rules verifying precision_min and recall_min:
         for rule, score in rules_:
@@ -371,28 +395,33 @@ class SkopeRules(BaseEstimator):
                 if rule in self.rules_:
                     # update the score to the new mean
                     c = self.rules_[rule][2] + 1
-                    b = self.rules_[rule][1] + 1. / c * (
-                        score[1] - self.rules_[rule][1])
-                    a = self.rules_[rule][0] + 1. / c * (
-                        score[0] - self.rules_[rule][0])
+                    b = self.rules_[rule][1] + 1.0 / c * (
+                        score[1] - self.rules_[rule][1]
+                    )
+                    a = self.rules_[rule][0] + 1.0 / c * (
+                        score[0] - self.rules_[rule][0]
+                    )
 
                     self.rules_[rule] = (a, b, c)
                 else:
                     self.rules_[rule] = (score[0], score[1], 1)
 
-        self.rules_ = sorted(self.rules_.items(),
-                             key=lambda x: (x[1][0], x[1][1]), reverse=True)
+        self.rules_ = sorted(
+            self.rules_.items(), key=lambda x: (x[1][0], x[1][1]), reverse=True
+        )
 
         # Deduplicate the rule using semantic tree
         if self.max_depth_duplication is not None:
             self.rules_ = self.deduplicate(self.rules_)
 
-        self.rules_ = sorted(self.rules_, key=lambda x: - self.f1_score(x))
+        self.rules_ = sorted(self.rules_, key=lambda x: -self.f1_score(x))
         self.rules_without_feature_names_ = self.rules_
 
         # Replace generic feature names by real feature names
-        self.rules_ = [(replace_feature_name(rule, self.feature_dict_), perf)
-                       for rule, perf in self.rules_]
+        self.rules_ = [
+            (replace_feature_name(rule, self.feature_dict_), perf)
+            for rule, perf in self.rules_
+        ]
 
         return self
 
@@ -435,17 +464,19 @@ class SkopeRules(BaseEstimator):
 
         """
         # Check if fit had been called
-        check_is_fitted(self, ['rules_', 'estimators_', 'estimators_samples_',
-                               'max_samples_'])
+        check_is_fitted(
+            self, ["rules_", "estimators_", "estimators_samples_", "max_samples_"]
+        )
 
         # Input validation
         X = check_array(X)
 
         if X.shape[1] != self.n_features_:
-            raise ValueError("X.shape[1] = %d should be equal to %d, "
-                             "the number of features at training time."
-                             " Please reshape your data."
-                             % (X.shape[1], self.n_features_))
+            raise ValueError(
+                "X.shape[1] = %d should be equal to %d, "
+                "the number of features at training time."
+                " Please reshape your data." % (X.shape[1], self.n_features_)
+            )
 
         df = pandas.DataFrame(X, columns=self.feature_names_)
         selected_rules = self.rules_without_feature_names_
@@ -476,17 +507,19 @@ class SkopeRules(BaseEstimator):
 
         """
         # Check if fit had been called
-        check_is_fitted(self, ['rules_', 'estimators_', 'estimators_samples_',
-                               'max_samples_'])
+        check_is_fitted(
+            self, ["rules_", "estimators_", "estimators_samples_", "max_samples_"]
+        )
 
         # Input validation
         X = check_array(X)
 
         if X.shape[1] != self.n_features_:
-            raise ValueError("X.shape[1] = %d should be equal to %d, "
-                             "the number of features at training time."
-                             " Please reshape your data."
-                             % (X.shape[1], self.n_features_))
+            raise ValueError(
+                "X.shape[1] = %d should be equal to %d, "
+                "the number of features at training time."
+                " Please reshape your data." % (X.shape[1], self.n_features_)
+            )
 
         df = pandas.DataFrame(X, columns=self.feature_names_)
         selected_rules = self.rules_
@@ -518,17 +551,19 @@ class SkopeRules(BaseEstimator):
 
         """
         # Check if fit had been called
-        check_is_fitted(self, ['rules_', 'estimators_', 'estimators_samples_',
-                               'max_samples_'])
+        check_is_fitted(
+            self, ["rules_", "estimators_", "estimators_samples_", "max_samples_"]
+        )
 
         # Input validation
         X = check_array(X)
 
         if X.shape[1] != self.n_features_:
-            raise ValueError("X.shape[1] = %d should be equal to %d, "
-                             "the number of features at training time."
-                             " Please reshape your data."
-                             % (X.shape[1], self.n_features_))
+            raise ValueError(
+                "X.shape[1] = %d should be equal to %d, "
+                "the number of features at training time."
+                " Please reshape your data." % (X.shape[1], self.n_features_)
+            )
 
         df = pandas.DataFrame(X, columns=self.feature_names_)
         selected_rules = self.rules_without_feature_names_
@@ -536,8 +571,8 @@ class SkopeRules(BaseEstimator):
         scores = np.zeros(X.shape[0])
         for (k, r) in enumerate(list((selected_rules))):
             scores[list(df.query(r[0]).index)] = np.maximum(
-                len(selected_rules) - k,
-                scores[list(df.query(r[0]).index)])
+                len(selected_rules) - k, scores[list(df.query(r[0]).index)]
+            )
 
         return scores
 
@@ -563,8 +598,9 @@ class SkopeRules(BaseEstimator):
             be considered as an outlier according to the selected rules.
         """
 
-        return np.array((self.score_top_rules(X) > len(self.rules_) - n_rules),
-                        dtype=int)
+        return np.array(
+            (self.score_top_rules(X) > len(self.rules_) - n_rules), dtype=int
+        )
 
     def _tree_to_rules(self, tree, feature_names):
         """
@@ -592,25 +628,23 @@ class SkopeRules(BaseEstimator):
         def recurse(node, base_name):
             if tree_.feature[node] != _tree.TREE_UNDEFINED:
                 name = feature_name[node]
-                symbol = '<='
-                symbol2 = '>'
+                symbol = "<="
+                symbol2 = ">"
                 threshold = tree_.threshold[node]
                 text = base_name + ["{} {} {}".format(name, symbol, threshold)]
                 recurse(tree_.children_left[node], text)
 
-                text = base_name + ["{} {} {}".format(name, symbol2,
-                                                      threshold)]
+                text = base_name + ["{} {} {}".format(name, symbol2, threshold)]
                 recurse(tree_.children_right[node], text)
             else:
-                rule = str.join(' and ', base_name)
-                rule = (rule if rule != ''
-                        else ' == '.join([feature_names[0]] * 2))
+                rule = str.join(" and ", base_name)
+                rule = rule if rule != "" else " == ".join([feature_names[0]] * 2)
                 # a rule selecting all is set to "c0==c0"
                 rules.append(rule)
 
         recurse(0, [])
 
-        return rules if len(rules) > 0 else 'True'
+        return rules if len(rules) > 0 else "True"
 
     def _eval_rule_perf(self, rule, X, y):
         detected_index = list(X.query(rule).index)
@@ -624,8 +658,10 @@ class SkopeRules(BaseEstimator):
         return y_detected.mean(), float(true_pos) / pos
 
     def deduplicate(self, rules):
-        return [max(rules_set, key=self.f1_score)
-                for rules_set in self._find_similar_rulesets(rules)]
+        return [
+            max(rules_set, key=self.f1_score)
+            for rules_set in self._find_similar_rulesets(rules)
+        ]
 
     def _find_similar_rulesets(self, rules):
         """Create clusters of rules using a decision tree based
@@ -642,6 +678,7 @@ class SkopeRules(BaseEstimator):
                 The different set of rules. Each set should be homogeneous
 
         """
+
         def split_with_best_feature(rules, depth, exceptions=[]):
             """
             Method to find a split of rules given most represented feature
@@ -649,8 +686,8 @@ class SkopeRules(BaseEstimator):
             if depth == 0:
                 return rules
 
-            rulelist = [rule.split(' and ') for rule, score in rules]
-            terms = [t.split(' ')[0] for term in rulelist for t in term]
+            rulelist = [rule.split(" and ") for rule, score in rules]
+            terms = [t.split(" ")[0] for term in rulelist for t in term]
             counter = Counter(terms)
             # Drop exception list
             for exception in exceptions:
@@ -663,18 +700,18 @@ class SkopeRules(BaseEstimator):
             # Proceed to split
             rules_splitted = [[], [], []]
             for rule in rules:
-                if (most_represented_term + ' <=') in rule[0]:
+                if (most_represented_term + " <=") in rule[0]:
                     rules_splitted[0].append(rule)
-                elif (most_represented_term + ' >') in rule[0]:
+                elif (most_represented_term + " >") in rule[0]:
                     rules_splitted[1].append(rule)
                 else:
                     rules_splitted[2].append(rule)
-            new_exceptions = exceptions+[most_represented_term]
+            new_exceptions = exceptions + [most_represented_term]
             # Choose best term
-            return [split_with_best_feature(ruleset,
-                                            depth-1,
-                                            exceptions=new_exceptions)
-                    for ruleset in rules_splitted]
+            return [
+                split_with_best_feature(ruleset, depth - 1, exceptions=new_exceptions)
+                for ruleset in rules_splitted
+            ]
 
         def breadth_first_search(rules, leaves=None):
             if len(rules) == 0 or not isinstance(rules[0], list):
@@ -684,11 +721,15 @@ class SkopeRules(BaseEstimator):
                 for rules_child in rules:
                     breadth_first_search(rules_child, leaves=leaves)
             return leaves
+
         leaves = []
         res = split_with_best_feature(rules, self.max_depth_duplication)
         breadth_first_search(res, leaves=leaves)
         return leaves
 
     def f1_score(self, x):
-        return 2 * x[1][0] * x[1][1] / \
-               (x[1][0] + x[1][1]) if (x[1][0] + x[1][1]) > 0 else 0
+        return (
+            2 * x[1][0] * x[1][1] / (x[1][0] + x[1][1])
+            if (x[1][0] + x[1][1]) > 0
+            else 0
+        )
