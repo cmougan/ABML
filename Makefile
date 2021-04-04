@@ -1,5 +1,6 @@
 black:
 	python -m black .
+	python -m black stupid.py
 
 gitall:
 	git add .

@@ -6,7 +6,7 @@ import collections as clc
 
 
 class CN2algorithm:
-    def __init__(self, train_data_csv, test_data_csv):
+    def __init__(self, X,y, min_significance = 0.7, max_star_size = 5):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
         and maximum star size which limits the number of complexes considered for specialisation.
@@ -18,20 +18,24 @@ class CN2algorithm:
         # unsplit_data.rename(columns={class_column_name: 'class'}, inplace = True)
         # self.unsplit_data = unsplit_data
         # train_set,test_set = train_test_split(unsplit_data,test_size=0.33, random_state=42)
-        self.train_set = pd.read_csv(train_data_csv)
-        self.test_set = pd.read_csv(test_data_csv)
-        # self.train_set = pd.read_csv(data_csv)
-        self.min_significance = 0.7
-        self.max_star_size = 5
 
-    def fit_CN2(self):
+        # self.train_set = pd.read_csv(data_csv)
+        self.min_significance = min_significance
+        self.max_star_size = max_star_size
+
+        self.X = X
+        self.y = y
+
+    def fit_CN2(self,X ,y):
         """
         Function to fit the CN2 model to
         """
 
         # import ipdb;ipdb.set_trace(context=8)
+        self.X = X
+        self.y = y
 
-        selectors = self.find_attribute_pairs()
+        selectors = self.find_attribute_pairs(self.X)
         remaining_examples = self.train_set
         rule_list = []
         # loop until data is all covered.
@@ -39,7 +43,8 @@ class CN2algorithm:
             best_new_rule_significance = 1
             rules_to_specialise = []
             existing_results = pd.DataFrame()
-            # search rule space until rule best_new_rule_significance = 1significance is lower than user set boundary(0.5 for testing)
+            # search rule space until rule best_new_rule_significance = 1
+            # significance is lower than user set boundary(0.5 for testing)
             while best_new_rule_significance > 0.5:
                 # calls statement if its first iteration of loop
                 if len(rules_to_specialise) == 0:
@@ -64,9 +69,7 @@ class CN2algorithm:
                 best_new_rule_significance = trimmed_rule_results[
                     "significance"
                 ].values[0]
-            # ipdb.set_trace(context=8)
 
-            # import ipdb;ipdb.set_trace(context=8)
             best_rule = (
                 existing_results["rule"].iloc[0],
                 existing_results["predict_class"].iloc[0],
@@ -215,15 +218,12 @@ class CN2algorithm:
         """
 
         # get attribute names
-        attributes = self.train_set.columns.values.tolist()
-
-        # remove class from list of attributes
-        del attributes[-1]
+        attributes = self.X.columns.values.tolist()
 
         # get possible values for attributes
         possAttribVals = {}
         for att in attributes:
-            possAttribVals[att] = set(self.train_set[att])
+            possAttribVals[att] = set(self.X[att])
 
         # get list of attribute,value pairs
         # from possAttribVals dictionary
@@ -399,7 +399,7 @@ class CN2algorithm:
         return laplace_accuracy_2
 
 
-if __name__ == "__main__":
+if __name__ == "aa":
     """
     main method to test algorithm on 4 data sets.
     """
