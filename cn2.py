@@ -5,7 +5,7 @@ import collections as clc
 
 
 class CN2algorithm:
-    def __init__(self, X, y, min_significance=0.7, max_star_size=5):
+    def __init__(self, X, y, min_significance=0.5, max_star_size=5):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
         and maximum star size which limits the number of complexes considered for specialisation.
@@ -41,7 +41,7 @@ class CN2algorithm:
             existing_results = pd.DataFrame()
             # search rule space until rule best_new_rule_significance = 1
             # significance is lower than user set boundary(0.5 for testing)
-            while best_new_rule_significance > 0.5:
+            while best_new_rule_significance > self.min_significance:
                 # calls statement if its first iteration of loop
                 if len(rules_to_specialise) == 0:
                     ordered_rule_results = self.apply_and_order_rules_by_score(
