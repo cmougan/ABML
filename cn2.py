@@ -135,7 +135,7 @@ class CN2algorithm:
         )
         return results, overall_accuracy
 
-    def apply_and_order_rules_by_score(self, complexes, data_set="default"):
+    def apply_and_order_rules_by_score(self, complexes):
         """
         A function which takes a list of complexes/rules and returns a pandas DataFrame
         that contains the complex, the entropy, the significance, the number of selectors,
@@ -145,14 +145,12 @@ class CN2algorithm:
         # import ipdb;ipdb.set_trace(context=8)
 
         # build a dictionary for each rule with relevant stats
-        if type(data_set) == str:
-            data_set = self.train_set
         list_of_row_dicts = []
         for row in complexes:
-            rule_coverage = self.complex_coverage(row, data_set)[1]
+            X_coverage, y_coverage = self.complex_coverage(row, self.X, self.y)
             rule_length = len(row)
             # test if rule covers 0 examples
-            if len(rule_coverage) == 0:
+            if X_coverage.shape[0] == 0:
 
                 row_dictionary = {
                     "rule": row,
@@ -160,7 +158,7 @@ class CN2algorithm:
                     "entropy": 10,
                     "laplace_accuracy": 0,
                     "significance": 0,
-                    "length": rule_length,
+                    "length": rule_length,  #### this might be an error
                     "num_insts_covered": 0,
                     "specificity": 0,
                 }
@@ -168,12 +166,12 @@ class CN2algorithm:
             # calculate stats for non 0 coverage rules
             else:
 
-                num_examples_covered = len(rule_coverage)
-                entropy_of_rule = self.rule_entropy(rule_coverage)
-                significance_of_rule = self.rule_significance(rule_coverage)
-                laplace_accuracy_of_rule = self.rule_laplace_accuracy(rule_coverage)
-                class_attrib = rule_coverage["class"]
-                # import ipdb;ipdb.set_trace(context=8)
+                num_examples_covered = X_coverage.shape[0]
+                entropy_of_rule = self.rule_entropy(y_coverage)
+                significance_of_rule = self.rule_significance(X_coverage, y_coverage)
+                laplace_accuracy_of_rule = self.rule_laplace_accuracy(y_coverage)
+
+                class_attrib = y_coverage
                 class_counts = class_attrib.value_counts()
                 majority_class = class_counts.axes[0][0]
                 rule_specificity = class_counts.values[0] / sum(class_counts)
@@ -280,9 +278,9 @@ class CN2algorithm:
             return False
 
         rule = {}
-        attributes = self.train_set.columns.values.tolist()
+        attributes = self.X.columns.values.tolist()
         for att in attributes:
-            rule[att] = list(set(self.train_set[att]))
+            rule[att] = list(set(self.X[att]))
 
         for att_val_pair in passed_complex:
             att = att_val_pair[0]
@@ -290,29 +288,20 @@ class CN2algorithm:
             rule[att] = [val]
         return rule
 
-    def complex_coverage(self, passed_complex, data_set="default"):
+    def complex_coverage(self, passed_complex, X_data, y_data):
         """Returns set of instances of the data
         which complex(rule) covers as a dataframe.
         """
-        if type(data_set) == str:
-            data_set = self.train_set
-        coverage = []
-
         rule = self.build_rule(passed_complex)
         if rule == False:
             return [], []
 
-        mask = data_set.isin(rule).all(axis=1)
-        rule_coverage_indexes = data_set[mask].index.values
-        rule_coverage_dataframe = data_set[mask]
+        mask = X_data.isin(rule).all(axis=1)
+        # rule_coverage_indexes = self.X[mask].index.values
+        X_rule = X_data[mask]
+        y_rule = y_data[mask]
 
-        # #iterate over dataframe rows
-        # for index,row in data_set.iterrows():
-        # 	if self.check_rule_datapoint(row, complex):
-        # 		coverage.append(index)
-
-        # import ipdb;ipdb.set_trace(context=8)
-        return rule_coverage_indexes, rule_coverage_dataframe
+        return X_rule, y_rule
 
     def check_rule_datapoint(self, datapoint, complex):
         """
@@ -336,14 +325,14 @@ class CN2algorithm:
 
             return result
 
-    def rule_entropy(self, covered_data):
+    def rule_entropy(self, y_data):
         """
         Function to check the Shannon entropy of a complex/rule
         given the instances it covers. Pass the instances
         covered by the rule as a dataframe where class cloumn is
         named class.
         """
-        class_series = covered_data["class"]
+        class_series = y_data
         num_instances = len(class_series)
         class_counts = class_series.value_counts()
         class_probabilities = class_counts.divide(num_instances)
@@ -353,19 +342,19 @@ class CN2algorithm:
 
         return entropy
 
-    def rule_significance(self, covered_data):
+    def rule_significance(self, X_data, y_data):
         """
-        Fucntion to check the significance of a rule using the
+        Function to check the significance of a rule using the
         likelihood ratio test where observed frequency of class
         in the coverage of the rule is compared to the observed
         frequencies of the classes in the training data.
         """
-        covered_classes = covered_data["class"]
+        covered_classes = y_data
         covered_num_instances = len(covered_classes)
         covered_counts = covered_classes.value_counts()
         covered_probs = covered_counts.divide(covered_num_instances)
 
-        train_classes = self.train_set["class"]
+        train_classes = self.y
         train_num_instances = len(train_classes)
         train_counts = train_classes.value_counts()
         train_probs = train_counts.divide(train_num_instances)
@@ -376,19 +365,18 @@ class CN2algorithm:
 
         return significance
 
-    def rule_laplace_accuracy(self, covered_data):
+    def rule_laplace_accuracy(self,y_data):
         """
         function to calculate laplace accuracy of a rule, taken from update to CN2
         paper by author of original CN2.
         """
-        # import ipdb;ipdb.set_trace(context=8)
 
-        class_series = covered_data["class"]
+        class_series = y_data
         class_counts = class_series.value_counts()
         num_instances = len(class_series)
         num_classes = len(class_counts)
         num_pred_class = class_counts.iloc[0]
-        # laplace_accuracy = (num_pred_class+1)/(num_instances+num_classes)
+
         laplace_accuracy_2 = (num_instances + num_classes - num_pred_class - 1) / (
             num_instances + num_classes
         )
