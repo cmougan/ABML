@@ -50,6 +50,8 @@ class Rule:
                     self.agg_dict[(feature, symbol)] = value
             else:
                 if symbol[0] == "<":
+                    # If the comparison operator is "minor" and there are to logical conditions
+                    # select the min split value. For "mayor" opertator works the opposite
                     self.agg_dict[(feature, symbol)] = str(
                         min(float(self.agg_dict[(feature, symbol)]), float(value))
                     )
