@@ -10,4 +10,4 @@ try:
 	@echo $$FOO
 
 stupid:
-	python stupid.py
+	python -W ignore stupid.py
