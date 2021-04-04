@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import copy
 import collections as clc
+import math
 
 
 class CN2algorithm:
@@ -167,10 +168,6 @@ class CN2algorithm:
             else:
 
                 num_examples_covered = X_coverage.shape[0]
-                entropy_of_rule = self.rule_entropy(y_coverage)
-                significance_of_rule = self.rule_significance(X_coverage, y_coverage)
-                laplace_accuracy_of_rule = self.rule_laplace_accuracy(y_coverage)
-
                 class_attrib = y_coverage
                 class_counts = class_attrib.value_counts()
                 majority_class = class_counts.axes[0][0]
@@ -178,9 +175,9 @@ class CN2algorithm:
                 row_dictionary = {
                     "rule": row,
                     "predict_class": majority_class,
-                    "entropy": entropy_of_rule,
-                    "laplace_accuracy": laplace_accuracy_of_rule,
-                    "significance": significance_of_rule,
+                    "entropy": self.rule_entropy(y_coverage),
+                    "laplace_accuracy": self.laplace_accuracy(y_coverage),
+                    "significance": self.rule_significance(X_coverage, y_coverage),
                     "length": rule_length,
                     "num_insts_covered": num_examples_covered,
                     "specificity": rule_specificity,
@@ -325,22 +322,32 @@ class CN2algorithm:
 
             return result
 
-    def rule_entropy(self, y_data):
+    def rule_entropy(self, y_data, base=None):
         """
         Function to check the Shannon entropy of a complex/rule
         given the instances it covers. Pass the instances
         covered by the rule as a dataframe where class cloumn is
         named class.
-        """
+
+        #Not sure this works
         class_series = y_data
         num_instances = len(class_series)
         class_counts = class_series.value_counts()
         class_probabilities = class_counts.divide(num_instances)
         log2_of_classprobs = np.log2(class_probabilities)
         plog2p = class_probabilities.multiply(log2_of_classprobs)
-        entropy = plog2p.sum() * -1
+        entropy = -plog2p.sum()
 
         return entropy
+
+        # Entropy from
+        #https://stackoverflow.com/questions/15450192/fastest-way-to-compute-entropy-in-python
+        """
+
+        value, counts = np.unique(y_data, return_counts=True)
+        norm_counts = counts / counts.sum()
+        base = math.e if base is None else base
+        return -(norm_counts * np.log(norm_counts) / np.log(base)).sum()
 
     def rule_significance(self, X_data, y_data):
         """
@@ -365,10 +372,12 @@ class CN2algorithm:
 
         return significance
 
-    def rule_laplace_accuracy(self,y_data):
+    def laplace_accuracy(self, y_data):
         """
         function to calculate laplace accuracy of a rule, taken from update to CN2
         paper by author of original CN2.
+
+        ????
         """
 
         class_series = y_data
