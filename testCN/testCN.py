@@ -30,15 +30,15 @@ iris = load_iris()
 train_set = pd.DataFrame(
     data=np.c_[iris["data"], iris["target"]], columns=iris["feature_names"] + ["target"]
 )
-X = train_set.drop(columns='target')
-y = train_set[['target']]
+X = train_set.drop(columns="target")
+y = train_set[["target"]]
 
 
 def test_find_attribute():
 
     X_tr = X[["sepal width (cm)"]].head(5)
     y_tr = y.head(5)
-    clf = CN2algorithm(X_tr,y_tr)
+    clf = CN2algorithm(X_tr, y_tr)
 
     s = clf.find_attribute_pairs()
 

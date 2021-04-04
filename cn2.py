@@ -6,7 +6,7 @@ import collections as clc
 
 
 class CN2algorithm:
-    def __init__(self, X,y, min_significance = 0.7, max_star_size = 5):
+    def __init__(self, X, y, min_significance=0.7, max_star_size=5):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
         and maximum star size which limits the number of complexes considered for specialisation.
@@ -26,7 +26,7 @@ class CN2algorithm:
         self.X = X
         self.y = y
 
-    def fit_CN2(self,X ,y):
+    def fit_CN2(self, X, y):
         """
         Function to fit the CN2 model to
         """
