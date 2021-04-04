@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import copy
-from sklearn.model_selection import train_test_split
 import collections as clc
 
 
@@ -27,16 +26,13 @@ class CN2algorithm:
         self.y = y
 
     def fit_CN2(self, X, y):
-        """
-        Function to fit the CN2 model to
-        """
 
         # import ipdb;ipdb.set_trace(context=8)
         self.X = X
         self.y = y
 
         selectors = self.find_attribute_pairs(self.X)
-        remaining_examples = self.train_set
+        remaining_examples = self.X
         rule_list = []
         # loop until data is all covered.
         while len(remaining_examples) >= 1:

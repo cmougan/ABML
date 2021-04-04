@@ -12,3 +12,6 @@ try:
 
 stupid:
 	python -W ignore stupid.py
+
+test:
+	pytest testCN/testCN.py
