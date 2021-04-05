@@ -58,22 +58,10 @@ class CN2algorithm:
             # search rule space until rule best_new_rule_significance = 1
             # significance is lower than user set boundary(0.5 for testing)
             while best_new_rule_significance > self.min_significance:
-                # calls statement if its first iteration of loop
-                if len(rules_to_specialise) == 0:
-                    ordered_rule_results = self.apply_and_order_rules_by_score(
-                        selectors, X_rem, y_rem
-                    )
-                    trimmed_rule_results = ordered_rule_results[0 : self.max_star_size]
 
-                elif len(rules_to_specialise) != 0:
-
-                    specialised_rules = self.specialise_complex(
-                        rules_to_specialise, selectors
-                    )
-                    ordered_rule_results = self.apply_and_order_rules_by_score(
-                        specialised_rules, X_rem, y_rem
-                    )
-                    trimmed_rule_results = ordered_rule_results[0 : self.max_star_size]
+                trimmed_rule_results = concatenate_rules(
+                    rules_to_specialise, X_rem, y_rem
+                )
 
                 # append newly discovered rules to existing ones
                 # order them and then take best X(3 for testing)
@@ -101,6 +89,25 @@ class CN2algorithm:
         self.rule_list = rule_list
         return self
 
+    def concatenate_rules(self, rules_to_specialise, X_rem, y_rem):
+        """
+        Concatenate rules, if empty return all selectors
+        """
+
+        # Add to the new rules all the rules,
+        # in case of empty return all selectors
+        specialised_rules = self.specialise_complex(rules_to_specialise)
+
+        # Apply the rules and select the top ones
+        apply_and_select = self.apply_and_order_rules_by_score(
+            specialised_rules, X_rem, y_rem
+        ).head(self.max_star_size)
+
+        return apply_and_select
+
+    # update 'rules to specialise' and significance value of best new rule
+    rules_to_specialise = trimmed_rule_results["rule"]
+
     def apply_and_order_rules_by_score(self, complexes, X_data, y_data):
         """
         A function which takes a list of complexes/rules and returns a pandas DataFrame
@@ -115,8 +122,8 @@ class CN2algorithm:
             X_coverage, y_coverage = self.complex_coverage(row, X_data, y_data)
             rule_length = len(row)
             # test if rule covers 0 examples
-            if X_coverage.shape[0] == 0:
-
+            print(X_coverage)
+            if (type(X_coverage) == list) or (X_coverage.empty):
                 row_dictionary = {
                     "rule": row,
                     "predict_class": "dud rule",
@@ -188,17 +195,19 @@ class CN2algorithm:
 
         return attrib_value_pairs
 
-    def specialise_complex(self, target_complexes, selectors):
+    def specialise_complex(self, target_complexes):
         """
         Function to specialise the complexes in the "star", the current set of
         complexes in consideration. Expects to receive a complex (a list of tuples)
-        to which it adds addtional conjunctions using all the possible selectors. Returns
+        to which it adds additional conjunctions using all the possible selectors. Returns
         a list of new, specialised complexes.
         """
+        if len(target_complexes) == 0:
+            return self.find_attribute_pairs()
 
         provisional_specialisations = []
         for targ_complex in target_complexes:
-            for selector in selectors:
+            for selector in self.find_attribute_pairs():
                 # check to see if target complex is a single tuple otherwise assume list of tuples
                 if type(targ_complex) == tuple:
                     comp_to_specialise = [copy.copy(targ_complex)]
@@ -238,8 +247,8 @@ class CN2algorithm:
         # Check if there are duplicates
         # If there are return FALSE???
         if len(set(atts_used_in_rule)) < len(atts_used_in_rule):
-            # print("THERE ARE DUPLICATED SELECTORS")
-            pass
+            print("THERE ARE DUPLICATED SELECTORS")
+            return False
 
         # Get all the values by column in the rule dict
         rule = {}
