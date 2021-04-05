@@ -52,6 +52,9 @@ def test_get_splits():
 
 
 def test_empty_beam_search():
+    '''
+    Evaluate that empty beam search extracts all splits
+    '''
     X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
     y_train = [0] * 6 + [1] * 2
     X_test = np.array([[2, 1], [1, 1]])
@@ -64,3 +67,36 @@ def test_empty_beam_search():
     clf.fit(X_train, y_train)
 
     assert_equal(clf.beam_search_complexes([]), clf.get_splits(X_train))
+
+
+def test_one_node_beam_search():
+    '''
+    Evaluate that a beam search with 3 nodes, extracts all possible for the tree nodes
+    '''
+    X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
+    y_train = [0] * 6 + [1] * 2
+    X_test = np.array([[2, 1], [1, 1]])
+
+    X_train = pd.DataFrame(X_train, columns=["col1", "col2"])
+    y_train = pd.DataFrame(y_train, columns=["target"])
+    X_test = pd.DataFrame(X_test, columns=["col1", "col2"])
+
+    clf = CN2algorithm()
+    clf.fit(X_train, y_train)
+
+    # Test beam creates one per different split
+    assert_equal(
+        len(clf.beam_search_complexes([("try", 3), ("try", 2), ("try", 1)])),
+        len(clf.beam_search_complexes([])) * 3,
+    )
+
+    # Test beam deletes duplicated conditions.
+    # For one it should be the same length minus itself
+    cplx = clf.beam_search_complexes([])
+    cplx2 = clf.beam_search_complexes(cplx[0])
+
+    assert_equal(
+        len(cplx),
+        len(cplx2)-1
+    )
+
