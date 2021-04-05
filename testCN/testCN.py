@@ -79,7 +79,6 @@ def test_one_node_beam_search():
 
     X_train = pd.DataFrame(X_train, columns=["col1", "col2"])
     y_train = pd.DataFrame(y_train, columns=["target"])
-    X_test = pd.DataFrame(X_test, columns=["col1", "col2"])
 
     clf = CN2algorithm()
     clf.fit(X_train, y_train)
@@ -98,3 +97,22 @@ def test_one_node_beam_search():
     assert_equal(len(cplx) - 1, len(cplx2))
 
 
+def test_complex_coverage():
+    """
+    Evaluate that a beam search with 3 nodes, extracts all possible for the tree nodes
+    """
+    X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
+    y_train = [0] * 6 + [1] * 2
+
+    X_train = pd.DataFrame(X_train, columns=["col1", "col2"])
+    y_train = pd.DataFrame(y_train, columns=["target"])
+
+    clf = CN2algorithm()
+
+    split = [("col1", 1)]
+    X, y = clf.complex_coverage(split, X_train, y_train)
+    assert_equal(X.shape[0], 6)
+
+    split = [("col2", 0)]
+    X, y = clf.complex_coverage(split, X_train, y_train)
+    assert_equal(X.shape[0], 4)
