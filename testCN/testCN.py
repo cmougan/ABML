@@ -96,7 +96,7 @@ def test_one_node_beam_search():
     cplx2 = clf.beam_search_complexes(cplx[0])
 
     assert_equal(
-        len(cplx),
-        len(cplx2)-1
+        len(cplx)-1,
+        len(cplx2)
     )
 
