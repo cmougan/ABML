@@ -47,14 +47,10 @@ class CN2algorithm:
         X_rem = self.X
         y_rem = self.y
         rule_list = []
-        # loop until data is all covered.
-        print(self.rule_entropy(y_rem))
+        # loop until data is all covered or target is unique
         while (X_rem.shape[0] > self.remaining_data) and (
             self.rule_entropy(y_rem) > self.entropy_threshold
         ):
-            print("LOOOOOP", X_rem.shape[0])
-            time.sleep(1)
-
             best_new_rule_significance = 1
             rules_to_specialise = []
             existing_results = pd.DataFrame()
@@ -62,7 +58,6 @@ class CN2algorithm:
             # search rule space until rule best_new_rule_significance = 1
             # significance is lower than user set boundary(0.5 for testing)
             while best_new_rule_significance > self.min_significance:
-                print("looop", best_new_rule_significance)
                 # calls statement if its first iteration of loop
                 if len(rules_to_specialise) == 0:
                     ordered_rule_results = self.apply_and_order_rules_by_score(
@@ -101,7 +96,6 @@ class CN2algorithm:
             )
             X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
             rule_list.append(best_rule)
-            pdb.set_trace()
 
         # return rule_list
         self.rule_list = rule_list
@@ -244,7 +238,7 @@ class CN2algorithm:
         # Check if there are duplicates
         # If there are return FALSE???
         if len(set(atts_used_in_rule)) < len(atts_used_in_rule):
-            #print("THERE ARE DUPLICATED SELECTORS")
+            # print("THERE ARE DUPLICATED SELECTORS")
             pass
 
         # Get all the values by column in the rule dict
@@ -301,7 +295,7 @@ class CN2algorithm:
         """
         Function to check the Shannon entropy of a complex/rule
         given the instances it covers. Pass the instances
-        covered by the rule as a dataframe where class cloumn is
+        covered by the rule as a dataframe where class column is
         named class.
 
         #Not sure this works
