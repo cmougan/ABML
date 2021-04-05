@@ -49,3 +49,18 @@ def test_get_splits():
         len(clf.get_splits(X_train)),
         len(set(X_train.col1.values)) + len(set(X_train.col2.values)),
     )
+
+
+def test_empty_beam_search():
+    X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
+    y_train = [0] * 6 + [1] * 2
+    X_test = np.array([[2, 1], [1, 1]])
+
+    X_train = pd.DataFrame(X_train, columns=["col1", "col2"])
+    y_train = pd.DataFrame(y_train, columns=["target"])
+    X_test = pd.DataFrame(X_test, columns=["col1", "col2"])
+
+    clf = CN2algorithm()
+    clf.fit(X_train, y_train)
+
+    assert_equal(clf.beam_search_complexes([]), clf.get_splits(X_train))
