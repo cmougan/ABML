@@ -15,6 +15,7 @@ class CN2algorithm:
         max_star_size=5,
         remaining_data=1,
         entropy_threshold=0,
+        max_num_rules=5,
     ):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
@@ -33,6 +34,7 @@ class CN2algorithm:
         self.max_star_size = max_star_size
         self.remaining_data = remaining_data
         self.entropy_threshold = entropy_threshold
+        self.max_num_rules = max_num_rules
 
     def fit(self, X, y):
 
@@ -94,6 +96,47 @@ class CN2algorithm:
         self.rule_list = rule_list
         print("LOOP_f", X_rem.shape[0], self.rule_entropy(y_rem))
         return self
+
+    def cn_fit(self, X, y):
+        self.rule_list = []
+
+        self.X = X
+        self.y = y
+
+        X_rem = self.X
+        y_rem = self.y
+
+        while (X_rem.shape[0] > self.remaining_data) and (
+            len(self.rule_list) < self.max_num_rules
+        ):
+            best_cplx = self.find_best_complex(X_rem, y_rem)
+            X_rem, y_rem = self.complex_coverage(best_cplx, X_rem, y_rem)
+
+            # This only works for classification at the moment
+            prob = sum(y_rem.values) / len(y_rem.values)
+            self.rule_list.append([best_cplx, prob])
+            print(self.rule_list)
+        return self
+
+    def find_best_complex(self, X_data, y_data):
+        cplx = []
+        entropy_gain = 100
+
+        while (
+            (X_data.shape[0] > 1)
+            and (entropy_gain > self.entropy_threshold)
+            and (len(cplx) < self.max_star_size)
+        ):
+            beam_results = self.evaluate_beam_rules(cplx, X_data, y_data)
+
+            print("evaluation done")
+
+            # Get the best rule
+            cplx = beam_results["rule"].iloc[0]
+            entropy_gain = beam_results["entropy_gain"].iloc[0]
+
+            X_data, y_data = self.complex_coverage(cplx, X_data, y_data)
+        return cplx
 
     def evaluate_beam_rules(self, current_rules, X_rem, y_rem):
         """
@@ -282,10 +325,10 @@ class CN2algorithm:
             return [], []
 
         for cond in passed_complex:
-            X_rem = X_data[X_data[cond[0]] <= cond[1]]
-            y_rem = y_data[X_data[cond[0]] <= cond[1]]
+            X_rest = X_data[X_data[cond[0]] <= cond[1]]
+            y_rest = y_data[X_data[cond[0]] <= cond[1]]
 
-        return X_rem, y_rem
+        return X_rest, y_rest
 
     def check_rule_datapoint(self, datapoint, complex):
         """

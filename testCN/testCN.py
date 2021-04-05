@@ -52,9 +52,9 @@ def test_get_splits():
 
 
 def test_empty_beam_search():
-    '''
+    """
     Evaluate that empty beam search extracts all splits
-    '''
+    """
     X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
     y_train = [0] * 6 + [1] * 2
     X_test = np.array([[2, 1], [1, 1]])
@@ -70,9 +70,9 @@ def test_empty_beam_search():
 
 
 def test_one_node_beam_search():
-    '''
+    """
     Evaluate that a beam search with 3 nodes, extracts all possible for the tree nodes
-    '''
+    """
     X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
     y_train = [0] * 6 + [1] * 2
     X_test = np.array([[2, 1], [1, 1]])
@@ -95,8 +95,6 @@ def test_one_node_beam_search():
     cplx = clf.beam_search_complexes([])
     cplx2 = clf.beam_search_complexes(cplx[0])
 
-    assert_equal(
-        len(cplx)-1,
-        len(cplx2)
-    )
+    assert_equal(len(cplx) - 1, len(cplx2))
+
 
