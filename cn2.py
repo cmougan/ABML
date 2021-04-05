@@ -8,7 +8,15 @@ import time
 
 
 class CN2algorithm:
-    def __init__(self, X, y, min_significance=0.5, max_star_size=5, remaining_data=1):
+    def __init__(
+        self,
+        X,
+        y,
+        min_significance=0.5,
+        max_star_size=5,
+        remaining_data=1,
+        entropy_threshold=0,
+    ):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
         and maximum star size which limits the number of complexes considered for specialisation.
@@ -25,6 +33,7 @@ class CN2algorithm:
         self.min_significance = min_significance
         self.max_star_size = max_star_size
         self.remaining_data = remaining_data
+        self.entropy_threshold = entropy_threshold
 
         self.X = X
         self.y = y
@@ -39,7 +48,10 @@ class CN2algorithm:
         y_rem = self.y
         rule_list = []
         # loop until data is all covered.
-        while X_rem.shape[0] > self.remaining_data:
+        print(self.rule_entropy(y_rem))
+        while (X_rem.shape[0] > self.remaining_data) and (
+            self.rule_entropy(y_rem) > self.entropy_threshold
+        ):
             print("LOOOOOP", X_rem.shape[0])
             time.sleep(1)
 
@@ -75,10 +87,12 @@ class CN2algorithm:
 
                 # update 'rules to specialise' and significance value of best new rule
                 rules_to_specialise = trimmed_rule_results["rule"]
+
+                # The condition to exit the inner loop.
+                ## Get the significance of the best rule
                 best_new_rule_significance = trimmed_rule_results[
                     "significance"
                 ].values[0]
-                pdb.set_trace()
 
             best_rule = (
                 existing_results["rule"].iloc[0],
@@ -87,6 +101,7 @@ class CN2algorithm:
             )
             X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
             rule_list.append(best_rule)
+            pdb.set_trace()
 
         # return rule_list
         self.rule_list = rule_list
@@ -229,7 +244,8 @@ class CN2algorithm:
         # Check if there are duplicates
         # If there are return FALSE???
         if len(set(atts_used_in_rule)) < len(atts_used_in_rule):
-            print("THERE ARE DUPLICATED SELECTORS")
+            #print("THERE ARE DUPLICATED SELECTORS")
+            pass
 
         # Get all the values by column in the rule dict
         rule = {}
