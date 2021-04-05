@@ -3,10 +3,12 @@ import numpy as np
 import copy
 import collections as clc
 import math
+import pdb
+import time
 
 
 class CN2algorithm:
-    def __init__(self, X, y, min_significance=0.5, max_star_size=5):
+    def __init__(self, X, y, min_significance=0.5, max_star_size=5, remaining_data=1):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
         and maximum star size which limits the number of complexes considered for specialisation.
@@ -22,133 +24,86 @@ class CN2algorithm:
         # self.train_set = pd.read_csv(data_csv)
         self.min_significance = min_significance
         self.max_star_size = max_star_size
+        self.remaining_data = remaining_data
 
         self.X = X
         self.y = y
 
-    def fit_CN2(self, X, y):
+    def fit(self, X, y):
 
-        # import ipdb;ipdb.set_trace(context=8)
         self.X = X
         self.y = y
 
-        selectors = self.find_attribute_pairs(self.X)
-        remaining_examples = self.X
+        selectors = self.find_attribute_pairs()
+        X_rem = self.X
+        y_rem = self.y
         rule_list = []
         # loop until data is all covered.
-        while len(remaining_examples) >= 1:
+        while X_rem.shape[0] > self.remaining_data:
+            print("LOOOOOP", X_rem.shape[0])
+            time.sleep(1)
+
             best_new_rule_significance = 1
             rules_to_specialise = []
             existing_results = pd.DataFrame()
+
             # search rule space until rule best_new_rule_significance = 1
             # significance is lower than user set boundary(0.5 for testing)
             while best_new_rule_significance > self.min_significance:
+                print("looop", best_new_rule_significance)
                 # calls statement if its first iteration of loop
                 if len(rules_to_specialise) == 0:
                     ordered_rule_results = self.apply_and_order_rules_by_score(
-                        selectors, remaining_examples
+                        selectors, X_rem, y_rem
                     )
                     trimmed_rule_results = ordered_rule_results[0 : self.max_star_size]
+
                 elif len(rules_to_specialise) != 0:
+
                     specialised_rules = self.specialise_complex(
                         rules_to_specialise, selectors
                     )
-                    # import ipdb;ipdb.set_trace(context=8)
                     ordered_rule_results = self.apply_and_order_rules_by_score(
-                        specialised_rules, remaining_examples
+                        specialised_rules, X_rem, y_rem
                     )
                     trimmed_rule_results = ordered_rule_results[0 : self.max_star_size]
-                # append newly discovered rules to existing ones, order them and then take best X(3 for testing)
+
+                # append newly discovered rules to existing ones
+                # order them and then take best X(3 for testing)
                 existing_results = existing_results.append(trimmed_rule_results)
                 existing_results = self.order_rules(existing_results).iloc[0:2]
+
                 # update 'rules to specialise' and significance value of best new rule
                 rules_to_specialise = trimmed_rule_results["rule"]
                 best_new_rule_significance = trimmed_rule_results[
                     "significance"
                 ].values[0]
+                pdb.set_trace()
 
             best_rule = (
                 existing_results["rule"].iloc[0],
                 existing_results["predict_class"].iloc[0],
                 existing_results["num_insts_covered"].iloc[0],
             )
-            best_rule_coverage_index, best_rule_coverage_df = self.complex_coverage(
-                best_rule[0], remaining_examples
-            )
+            X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
             rule_list.append(best_rule)
-            remaining_examples = remaining_examples.drop(best_rule_coverage_index)
 
-        return rule_list
+        # return rule_list
+        self.rule_list = rule_list
+        return self
 
-    def test_fitted_model(self, rule_list, data_set="default"):
-        """
-        Test rule list returned by fit_CN2 function on test data(or manually supplied data)
-        returns a dataframe that contains the rule, rule acc, num of examples covered.
-        Also return general accuracy as average of each rule accuracy
-        """
-        if type(data_set) == str:
-            data_set = self.test_set
-
-        remaining_examples = data_set
-        list_of_row_dicts = []
-
-        for rule in rule_list:
-            rule_coverage_indexes, rule_coverage_dataframe = self.complex_coverage(
-                rule[0], remaining_examples
-            )
-            # check for zero coverage due to noise(lense data too small)
-            if len(rule_coverage_dataframe) == 0:
-                row_dictionary = {
-                    "rule": rule,
-                    "pred_class": "zero coverage",
-                    "rule_acc": 0,
-                    "num_examples": 0,
-                    "num_correct": 0,
-                    "num_wrong": 0,
-                }
-                list_of_row_dicts.append(row_dictionary)
-            # otherwise generate statistics about rule then save and remove examples from the data and test next rule.
-            else:
-                class_of_covered_examples = rule_coverage_dataframe["class"]
-                # import ipdb;ipdb.set_trace(context=8)
-                class_counts = class_of_covered_examples.value_counts()
-                rule_accuracy = class_counts.values[0] / sum(class_counts)
-                num_correctly_classified_examples = class_counts.values[0]
-                num_incorrectly_classified_examples = (
-                    sum(class_counts.values) - num_correctly_classified_examples
-                )
-
-                row_dictionary = {
-                    "rule": rule,
-                    "pred_class": rule[1],
-                    "rule_acc": rule_accuracy,
-                    "num_examples": len(rule_coverage_indexes),
-                    "num_correct": num_correctly_classified_examples,
-                    "num_wrong": num_incorrectly_classified_examples,
-                }
-                list_of_row_dicts.append(row_dictionary)
-
-                remaining_examples = remaining_examples.drop(rule_coverage_indexes)
-
-        results = pd.DataFrame(list_of_row_dicts)
-        overall_accuracy = sum(results["rule_acc"]) / len(
-            [r for r in results["rule_acc"] if r != 0]
-        )
-        return results, overall_accuracy
-
-    def apply_and_order_rules_by_score(self, complexes):
+    def apply_and_order_rules_by_score(self, complexes, X_data, y_data):
         """
         A function which takes a list of complexes/rules and returns a pandas DataFrame
         that contains the complex, the entropy, the significance, the number of selectors,
         the number of examples covered, the length of the rule and the predicted class of the rule.
         The input param complexes should be a list of lists of tuples.
         """
-        # import ipdb;ipdb.set_trace(context=8)
 
         # build a dictionary for each rule with relevant stats
         list_of_row_dicts = []
         for row in complexes:
-            X_coverage, y_coverage = self.complex_coverage(row, self.X, self.y)
+            X_coverage, y_coverage = self.complex_coverage(row, X_data, y_data)
             rule_length = len(row)
             # test if rule covers 0 examples
             if X_coverage.shape[0] == 0:
@@ -191,7 +146,6 @@ class CN2algorithm:
 
     def order_rules(self, dataFrame_of_rules):
         """
-
         Function to order a dataframe of rules and stats according to laplace acc and length then reindex
         the ordered frame.
         """
@@ -228,11 +182,10 @@ class CN2algorithm:
     def specialise_complex(self, target_complexes, selectors):
         """
         Function to specialise the complexes in the "star", the current set of
-        complexes in consideration. Exepects to receive a complex (a list of tuples)
+        complexes in consideration. Expects to receive a complex (a list of tuples)
         to which it adds addtional conjunctions using all the possible selectors. Returns
         a list of new, specialised complexes.
         """
-        # import ipdb;ipdb.set_trace(context=8)
 
         provisional_specialisations = []
         for targ_complex in target_complexes:
@@ -262,23 +215,29 @@ class CN2algorithm:
 
     def build_rule(self, passed_complex):
         """
+        Carlos: I have no clue of why this is here
+
         build a rule in dict format where target attributes have a single value and non-target attributes
-        have a list of all possible values. Checks if there are repetitions in the attributes used, if so
-        it returns False
+        have a list of all possible values.
+        Checks if there are repetitions in the attributes used, if so
+        it returns False -- why?
         """
         atts_used_in_rule = []
         for selector in passed_complex:
             atts_used_in_rule.append(selector[0])
-        set_of_atts_used_in_rule = set(atts_used_in_rule)
 
-        if len(set_of_atts_used_in_rule) < len(atts_used_in_rule):
-            return False
+        # Check if there are duplicates
+        # If there are return FALSE???
+        if len(set(atts_used_in_rule)) < len(atts_used_in_rule):
+            print("THERE ARE DUPLICATED SELECTORS")
 
+        # Get all the values by column in the rule dict
         rule = {}
-        attributes = self.X.columns.values.tolist()
-        for att in attributes:
-            rule[att] = list(set(self.X[att]))
+        features = self.X.columns.values.tolist()
+        for col in features:
+            rule[col] = list(set(self.X[col]))
 
+        # Add the passed selectors to the rule dict
         for att_val_pair in passed_complex:
             att = att_val_pair[0]
             val = att_val_pair[1]
@@ -390,6 +349,62 @@ class CN2algorithm:
             num_instances + num_classes
         )
         return laplace_accuracy_2
+
+    def test_fitted_model(self, rule_list, data_set="default"):
+        """
+        Test rule list returned by fit_CN2 function on test data(or manually supplied data)
+        returns a dataframe that contains the rule, rule acc, num of examples covered.
+        Also return general accuracy as average of each rule accuracy
+        """
+        if type(data_set) == str:
+            data_set = self.test_set
+
+        remaining_examples = data_set
+        list_of_row_dicts = []
+
+        for rule in rule_list:
+            rule_coverage_indexes, rule_coverage_dataframe = self.complex_coverage(
+                rule[0], remaining_examples
+            )
+            # check for zero coverage due to noise(lense data too small)
+            if len(rule_coverage_dataframe) == 0:
+                row_dictionary = {
+                    "rule": rule,
+                    "pred_class": "zero coverage",
+                    "rule_acc": 0,
+                    "num_examples": 0,
+                    "num_correct": 0,
+                    "num_wrong": 0,
+                }
+                list_of_row_dicts.append(row_dictionary)
+            # otherwise generate statistics about rule then save and remove examples from the data and test next rule.
+            else:
+                class_of_covered_examples = rule_coverage_dataframe["class"]
+                # import ipdb;ipdb.set_trace(context=8)
+                class_counts = class_of_covered_examples.value_counts()
+                rule_accuracy = class_counts.values[0] / sum(class_counts)
+                num_correctly_classified_examples = class_counts.values[0]
+                num_incorrectly_classified_examples = (
+                    sum(class_counts.values) - num_correctly_classified_examples
+                )
+
+                row_dictionary = {
+                    "rule": rule,
+                    "pred_class": rule[1],
+                    "rule_acc": rule_accuracy,
+                    "num_examples": len(rule_coverage_indexes),
+                    "num_correct": num_correctly_classified_examples,
+                    "num_wrong": num_incorrectly_classified_examples,
+                }
+                list_of_row_dicts.append(row_dictionary)
+
+                remaining_examples = remaining_examples.drop(rule_coverage_indexes)
+
+        results = pd.DataFrame(list_of_row_dicts)
+        overall_accuracy = sum(results["rule_acc"]) / len(
+            [r for r in results["rule_acc"] if r != 0]
+        )
+        return results, overall_accuracy
 
 
 if __name__ == "aa":
