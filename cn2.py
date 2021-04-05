@@ -5,13 +5,12 @@ import collections as clc
 import math
 import pdb
 import time
+from skrules.rule import Rule
 
 
 class CN2algorithm:
     def __init__(
         self,
-        X,
-        y,
         min_significance=0.5,
         max_star_size=5,
         remaining_data=1,
@@ -35,36 +34,39 @@ class CN2algorithm:
         self.remaining_data = remaining_data
         self.entropy_threshold = entropy_threshold
 
-        self.X = X
-        self.y = y
-
     def fit(self, X, y):
 
         self.X = X
         self.y = y
 
-        selectors = self.find_attribute_pairs()
         X_rem = self.X
         y_rem = self.y
+
         rule_list = []
         # loop until data is all covered or target is unique
         while (X_rem.shape[0] > self.remaining_data) and (
             self.rule_entropy(y_rem) > self.entropy_threshold
         ):
+            print("LOOP_i", X_rem.shape[0], self.rule_entropy(y_rem))
             best_new_rule_significance = 1
+            entropy_gain = 100
             rules_to_specialise = []
             existing_results = pd.DataFrame()
 
             # search rule space until rule best_new_rule_significance = 1
             # significance is lower than user set boundary(0.5 for testing)
-            while best_new_rule_significance > self.min_significance:
+            while (best_new_rule_significance > self.min_significance) and (
+                entropy_gain > 0
+            ):
+                print("loop", best_new_rule_significance, entropy_gain)
 
-                trimmed_rule_results = concatenate_rules(
+                trimmed_rule_results = self.evaluate_beam_rules(
                     rules_to_specialise, X_rem, y_rem
                 )
 
                 # append newly discovered rules to existing ones
                 # order them and then take best X(3 for testing)
+
                 existing_results = existing_results.append(trimmed_rule_results)
                 existing_results = self.order_rules(existing_results).iloc[0:2]
 
@@ -77,26 +79,29 @@ class CN2algorithm:
                     "significance"
                 ].values[0]
 
+                entropy_gain = trimmed_rule_results["entropy_gain"].values[0]
+
             best_rule = (
                 existing_results["rule"].iloc[0],
                 existing_results["predict_class"].iloc[0],
                 existing_results["num_insts_covered"].iloc[0],
             )
+            print(best_rule[0])
             X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
             rule_list.append(best_rule)
 
         # return rule_list
         self.rule_list = rule_list
+        print("LOOP_f", X_rem.shape[0], self.rule_entropy(y_rem))
         return self
 
-    def concatenate_rules(self, rules_to_specialise, X_rem, y_rem):
+    def evaluate_beam_rules(self, current_rules, X_rem, y_rem):
         """
         Concatenate rules, if empty return all selectors
         """
 
-        # Add to the new rules all the rules,
-        # in case of empty return all selectors
-        specialised_rules = self.specialise_complex(rules_to_specialise)
+        # Beam Search rules
+        specialised_rules = self.beam_search_complexes(current_rules)
 
         # Apply the rules and select the top ones
         apply_and_select = self.apply_and_order_rules_by_score(
@@ -104,9 +109,6 @@ class CN2algorithm:
         ).head(self.max_star_size)
 
         return apply_and_select
-
-    # update 'rules to specialise' and significance value of best new rule
-    rules_to_specialise = trimmed_rule_results["rule"]
 
     def apply_and_order_rules_by_score(self, complexes, X_data, y_data):
         """
@@ -118,11 +120,11 @@ class CN2algorithm:
 
         # build a dictionary for each rule with relevant stats
         list_of_row_dicts = []
+
         for row in complexes:
             X_coverage, y_coverage = self.complex_coverage(row, X_data, y_data)
             rule_length = len(row)
             # test if rule covers 0 examples
-            print(X_coverage)
             if (type(X_coverage) == list) or (X_coverage.empty):
                 row_dictionary = {
                     "rule": row,
@@ -147,7 +149,8 @@ class CN2algorithm:
                     "rule": row,
                     "predict_class": majority_class,
                     "entropy": self.rule_entropy(y_coverage),
-                    "laplace_accuracy": self.laplace_accuracy(y_coverage),
+                    "entropy_gain": self.rule_entropy(y_coverage)
+                    - self.rule_entropy(y_data),
                     "significance": self.rule_significance(X_coverage, y_coverage),
                     "length": rule_length,
                     "num_insts_covered": num_examples_covered,
@@ -165,26 +168,27 @@ class CN2algorithm:
         Function to order a dataframe of rules and stats according to laplace acc and length then reindex
         the ordered frame.
         """
-        ordered_rules_and_stats = dataFrame_of_rules.sort_values(
-            ["entropy", "length", "num_insts_covered"], ascending=[True, True, False]
-        )
-        ordered_rules_and_stats = ordered_rules_and_stats.reset_index(drop=True)
+        # ordered_rules_and_stats = dataFrame_of_rules.sort_values(["entropy", "length", "num_insts_covered"], ascending=[True, True, False])
+        # ordered_rules_and_stats = ordered_rules_and_stats.reset_index(drop=True)
 
-        return ordered_rules_and_stats
+        return dataFrame_of_rules.sort_values(
+            ["entropy_gain", "length", "num_insts_covered"],
+            ascending=[True, False, False],
+        ).reset_index(drop=True)
 
-    def find_attribute_pairs(self):
+    def get_splits(self, data):
         """function to return the first set
         of complexes which are the
         1 attribute selectors
         """
 
         # get attribute names
-        attributes = self.X.columns.values.tolist()
+        attributes = data.columns.values.tolist()
 
         # get possible values for attributes
         possAttribVals = {}
         for att in attributes:
-            possAttribVals[att] = set(self.X[att])
+            possAttribVals[att] = set(data[att])
 
         # get list of attribute,value pairs
         # from possAttribVals dictionary
@@ -195,19 +199,22 @@ class CN2algorithm:
 
         return attrib_value_pairs
 
-    def specialise_complex(self, target_complexes):
+    def beam_search_complexes(self, target_complexes):
         """
         Function to specialise the complexes in the "star", the current set of
         complexes in consideration. Expects to receive a complex (a list of tuples)
-        to which it adds additional conjunctions using all the possible selectors. Returns
-        a list of new, specialised complexes.
+        to which it adds additional conjunctions using all the possible selectors.
+
+        Returns a list of new, specialised complexes.
         """
+
+        # If there are no target complex return all possible values
         if len(target_complexes) == 0:
-            return self.find_attribute_pairs()
+            return self.get_splits(self.X)
 
         provisional_specialisations = []
         for targ_complex in target_complexes:
-            for selector in self.find_attribute_pairs():
+            for selector in self.get_splits(self.X):
                 # check to see if target complex is a single tuple otherwise assume list of tuples
                 if type(targ_complex) == tuple:
                     comp_to_specialise = [copy.copy(targ_complex)]
@@ -240,6 +247,9 @@ class CN2algorithm:
         Checks if there are repetitions in the attributes used, if so
         it returns False -- why?
         """
+        if len(passed_complex) < 1:
+            print("LEN PAASSED COMPLEX NULL")
+
         atts_used_in_rule = []
         for selector in passed_complex:
             atts_used_in_rule.append(selector[0])
@@ -247,7 +257,7 @@ class CN2algorithm:
         # Check if there are duplicates
         # If there are return FALSE???
         if len(set(atts_used_in_rule)) < len(atts_used_in_rule):
-            print("THERE ARE DUPLICATED SELECTORS")
+            # print("THERE ARE DUPLICATED SELECTORS")
             return False
 
         # Get all the values by column in the rule dict
@@ -267,16 +277,15 @@ class CN2algorithm:
         """Returns set of instances of the data
         which complex(rule) covers as a dataframe.
         """
-        rule = self.build_rule(passed_complex)
-        if rule == False:
+        # rule = self.build_rule(passed_complex)
+        if len(passed_complex) < 1:
             return [], []
 
-        mask = X_data.isin(rule).all(axis=1)
-        # rule_coverage_indexes = self.X[mask].index.values
-        X_rule = X_data[mask]
-        y_rule = y_data[mask]
+        for cond in passed_complex:
+            X_rem = X_data[X_data[cond[0]] <= cond[1]]
+            y_rem = y_data[X_data[cond[0]] <= cond[1]]
 
-        return X_rule, y_rule
+        return X_rem, y_rem
 
     def check_rule_datapoint(self, datapoint, complex):
         """
