@@ -148,7 +148,6 @@ def test_check_rule_datapoint():
 
     # This will need to be modified in the future
     assert_equal(clf.check_rule_datapoint(X_train.tail(1)),1)
-    assert_equal(clf.check_rule_datapoint(X_train.head(0)), 1)
+    assert_equal(clf.check_rule_datapoint(X_train.head(1)), 0)
 
-    X_train.tail(1)
 
