@@ -72,12 +72,14 @@ class CN2algorithm(BaseEstimator):
             print(self.rule_list)
         return self
 
-    def _convert_to_dataframe(self, data, target=True):
+    def _convert_to_dataframe(self, data, target=False):
         cols = []
-        for i in range(0, len(data[0])):
-            cols.append("col" + str(i))
         if target:
             cols = ["target"]
+        else:
+            for i in range(0, len(data[0])):
+                cols.append("col" + str(i))
+
         return pd.DataFrame(data, columns=cols)
 
     def find_best_complex(self, X_data, y_data):
