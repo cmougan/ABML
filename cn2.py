@@ -219,25 +219,28 @@ class CN2algorithm:
 
         return provisional_specialisations
 
-    def check_rule_datapoint(self, datapoint):
+    def check_rule_datapoint(self, data):
 
-        if datapoint.shape[0] != 1:
+        if data.shape[0] != 1:
             raise ValueError("Datapoint is more than one.")
 
         for rule in self.rule_list:
+            datapoint = data
             for cond in rule[0]:
                 datapoint = datapoint[datapoint[cond[0]] <= cond[1]]
             if datapoint.shape[0] == 1:
-                print("magic")
                 return rule[1]
         warn("Datapoint not in rules")
         return 0
 
-    def predict(X_test):
+    def predict(self, X_test):
 
         preds = []
         for index, row in X_test.iterrows():
-            preds.append(self.check_rule_datapoint(pd.DataFrame([row])))
+            preds.append(
+                self.check_rule_datapoint(pd.DataFrame([row]))
+            )
+
         return preds
 
     def build_rule(self, passed_complex):
