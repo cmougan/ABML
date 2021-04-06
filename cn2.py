@@ -326,24 +326,19 @@ class CN2algorithm:
             warn("Empty complex")
             return pd.DataFrame(), pd.DataFrame()
 
-        print(operator)
         if operator == "<=":
-            print(operator, passed_complex)
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] <= cond[1]]
                 y_rest = y_data[X_data[cond[0]] <= cond[1]]
         elif operator == "<":
-            print(operator, passed_complex)
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] < cond[1]]
                 y_rest = y_data[X_data[cond[0]] < cond[1]]
         elif operator == ">=":
-            print(operator, passed_complex)
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] >= cond[1]]
                 y_rest = y_data[X_data[cond[0]] >= cond[1]]
         elif operator == ">":
-            print(operator, passed_complex)
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] > cond[1]]
                 y_rest = y_data[X_data[cond[0]] > cond[1]]
