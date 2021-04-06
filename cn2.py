@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import collections as clc
 import math
+from warnings import warn
 import pdb
 import time
 from skrules.rule import Rule
@@ -110,7 +111,7 @@ class CN2algorithm:
             len(self.rule_list) < self.max_num_rules
         ):
             best_cplx = self.find_best_complex(X_rem, y_rem)
-            X_rem, y_rem = self.complex_coverage(best_cplx, X_rem, y_rem)
+            X_rem, y_rem = self.complex_coverage(best_cplx, X_rem, y_rem, operator=">")
 
             # This only works for classification at the moment
             prob = sum(y_rem.values) / len(y_rem.values)
@@ -316,17 +317,36 @@ class CN2algorithm:
             rule[att] = [val]
         return rule
 
-    def complex_coverage(self, passed_complex, X_data, y_data):
+    def complex_coverage(self, passed_complex, X_data, y_data, operator="<="):
         """Returns set of instances of the data
-        which complex(rule) covers as a dataframe.
+        which complex (rule) covers as a dataframe.
         """
         # rule = self.build_rule(passed_complex)
         if len(passed_complex) < 1:
-            return [], []
+            warn("Empty complex")
+            return pd.DataFrame(), pd.DataFrame()
 
-        for cond in passed_complex:
-            X_rest = X_data[X_data[cond[0]] <= cond[1]]
-            y_rest = y_data[X_data[cond[0]] <= cond[1]]
+        print(operator)
+        if operator == "<=":
+            print(operator, passed_complex)
+            for cond in passed_complex:
+                X_rest = X_data[X_data[cond[0]] <= cond[1]]
+                y_rest = y_data[X_data[cond[0]] <= cond[1]]
+        elif operator == "<":
+            print(operator, passed_complex)
+            for cond in passed_complex:
+                X_rest = X_data[X_data[cond[0]] < cond[1]]
+                y_rest = y_data[X_data[cond[0]] < cond[1]]
+        elif operator == ">=":
+            print(operator, passed_complex)
+            for cond in passed_complex:
+                X_rest = X_data[X_data[cond[0]] >= cond[1]]
+                y_rest = y_data[X_data[cond[0]] >= cond[1]]
+        elif operator == ">":
+            print(operator, passed_complex)
+            for cond in passed_complex:
+                X_rest = X_data[X_data[cond[0]] > cond[1]]
+                y_rest = y_data[X_data[cond[0]] > cond[1]]
 
         return X_rest, y_rest
 
@@ -343,7 +363,7 @@ class CN2algorithm:
                 return True
             else:
                 return False
-        # import ipdb;ipdb.set_trace(context=8)
+
         if type(complex) == list:
             result = True
             for selector in complex:

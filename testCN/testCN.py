@@ -109,10 +109,27 @@ def test_complex_coverage():
 
     clf = CN2algorithm()
 
+    # Test for col1
     split = [("col1", 1)]
     X, y = clf.complex_coverage(split, X_train, y_train)
     assert_equal(X.shape[0], 6)
 
+    # Test for col2
     split = [("col2", 0)]
     X, y = clf.complex_coverage(split, X_train, y_train)
     assert_equal(X.shape[0], 4)
+
+    # Test for operator >
+    split = [("col2", 0)]
+    X, y = clf.complex_coverage(split, X_train, y_train,operator='>')
+    assert_equal(X.shape[0], 4)
+
+    # Test for operator >=
+    split = [("col2", 3)]
+    X, y = clf.complex_coverage(split, X_train, y_train,operator='>=')
+    assert_equal(X.shape[0], 1)
+
+    # Test for operator <=
+    split = [("col2", -2)]
+    X, y = clf.complex_coverage(split, X_train, y_train,operator='<')
+    assert_equal(X.shape[0], 1)
