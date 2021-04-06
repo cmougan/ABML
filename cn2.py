@@ -69,7 +69,6 @@ class CN2algorithm(BaseEstimator):
             # This only works for classification at the moment
             prob = sum(y_left.values) / len(y_left.values)
             self.rule_list.append([best_cplx, prob])
-            print(self.rule_list)
         return self
 
     def _convert_to_dataframe(self, data, target=False):
@@ -176,8 +175,8 @@ class CN2algorithm(BaseEstimator):
         # ordered_rules_and_stats = dataFrame_of_rules.sort_values(["entropy", "length", "num_insts_covered"], ascending=[True, True, False])
         # ordered_rules_and_stats = ordered_rules_and_stats.reset_index(drop=True)
 
-        return dataFrame_of_rules.sort_values("entropy_gain")
-        # return dataFrame_of_rules.sort_values(["entropy_gain", "length", "num_insts_covered"],ascending=[True, False, False],).reset_index(drop=True)
+        #return dataFrame_of_rules.sort_values("entropy_gain")
+        return dataFrame_of_rules.sort_values(["entropy", "length", "num_insts_covered"],ascending=[True, False, False],).reset_index(drop=True)
 
     def get_splits(self, data):
         """function to return the first set
@@ -253,7 +252,7 @@ class CN2algorithm(BaseEstimator):
             if datapoint.shape[0] == 1:
                 return rule[1]
         warn("Datapoint not in rules")
-        return 0
+        return [0]
 
     def predict(self, X_test):
         check_is_fitted(self)
