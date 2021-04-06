@@ -291,7 +291,7 @@ class CN2algorithm:
                 if y_inverse:
                     y_lefts = y_data[~(X_data[cond[0]] < cond[1])]
         if y_inverse:
-            return X_rest, y_rest, y_inverse
+            return X_rest, y_rest, y_lefts
 
         return X_rest, y_rest
 
