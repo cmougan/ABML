@@ -4,6 +4,8 @@ from sklearn.model_selection import ParameterGrid
 from sklearn.datasets import load_iris, load_boston, make_blobs
 from sklearn.metrics import accuracy_score
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.utils import check_random_state
 from sklearn.utils.testing import assert_array_equal
 from sklearn.utils.testing import assert_raises
@@ -18,6 +20,8 @@ from sklearn.utils.testing import ignore_warnings
 
 import pandas as pd
 import numpy as np
+from sklearn.utils.estimator_checks import check_estimator, parametrize_with_checks
+
 import copy
 from sklearn.model_selection import train_test_split
 import collections as clc
@@ -136,6 +140,7 @@ def test_complex_coverage():
 
     # Test for y_left
 
+
 def test_check_rule_datapoint():
     X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
     y_train = [0] * 6 + [1] * 2
@@ -147,7 +152,9 @@ def test_check_rule_datapoint():
     clf.fit(X_train, y_train)
 
     # This will need to be modified in the future
-    assert_equal(clf.check_rule_datapoint(X_train.tail(1)),1)
+    assert_equal(clf.check_rule_datapoint(X_train.tail(1)), 1)
     assert_equal(clf.check_rule_datapoint(X_train.head(1)), 0)
 
 
+# @parametrize_with_checks([LogisticRegression(), DecisionTreeRegressor()])
+# def test_classifier():check_estimator(CN2algorithm)

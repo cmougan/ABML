@@ -4,12 +4,15 @@ import copy
 import collections as clc
 import math
 from warnings import warn
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.multiclass import unique_labels
 import pdb
 import time
 from skrules.rule import Rule
 
 
-class CN2algorithm:
+class CN2algorithm(BaseEstimator):
     def __init__(
         self,
         min_significance=0.5,
@@ -38,7 +41,16 @@ class CN2algorithm:
         self.max_num_rules = max_num_rules
 
     def fit(self, X, y):
+
+        check_X_y(X, y)
+        self.classes_ = unique_labels(y)
+
         self.rule_list = []
+
+        if isinstance(X, pd.DataFrame) == False:
+            X = self._convert_to_dataframe(X)
+        if isinstance(y, pd.DataFrame) == False:
+            y = self._convert_to_dataframe(y, target=True)
 
         self.X = X
         self.y = y
@@ -59,6 +71,14 @@ class CN2algorithm:
             self.rule_list.append([best_cplx, prob])
             print(self.rule_list)
         return self
+
+    def _convert_to_dataframe(self, data, target=True):
+        cols = []
+        for i in range(0, len(data[0])):
+            cols.append("col" + str(i))
+        if target:
+            cols = ["target"]
+        return pd.DataFrame(data, columns=cols)
 
     def find_best_complex(self, X_data, y_data):
         cplx = []
@@ -234,12 +254,14 @@ class CN2algorithm:
         return 0
 
     def predict(self, X_test):
+        check_is_fitted(self)
+
+        if isinstance(X_test, pd.DataFrame) == False:
+            X_test = self._convert_to_dataframe(X_test)
 
         preds = []
         for index, row in X_test.iterrows():
-            preds.append(
-                self.check_rule_datapoint(pd.DataFrame([row]))
-            )
+            preds.append(self.check_rule_datapoint(pd.DataFrame([row])))
 
         return preds
 
