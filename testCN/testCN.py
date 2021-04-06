@@ -135,3 +135,20 @@ def test_complex_coverage():
     assert_equal(X.shape[0], 1)
 
     # Test for y_left
+
+def test_check_rule_datapoint():
+    X_train = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1], [6, 3], [-4, -7]]
+    y_train = [0] * 6 + [1] * 2
+
+    X_train = pd.DataFrame(X_train, columns=["col1", "col2"])
+    y_train = pd.DataFrame(y_train, columns=["target"])
+
+    clf = CN2algorithm(max_num_rules=1)
+    clf.fit(X_train, y_train)
+
+    # This will need to be modified in the future
+    assert_equal(clf.check_rule_datapoint(X_train.tail(1)),1)
+    assert_equal(clf.check_rule_datapoint(X_train.head(0)), 1)
+
+    X_train.tail(1)
+
