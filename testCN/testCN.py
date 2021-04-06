@@ -133,3 +133,5 @@ def test_complex_coverage():
     split = [("col2", -2)]
     X, y = clf.complex_coverage(split, X_train, y_train, operator="<")
     assert_equal(X.shape[0], 1)
+
+    # Test for y_left

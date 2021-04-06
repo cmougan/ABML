@@ -38,67 +38,6 @@ class CN2algorithm:
         self.max_num_rules = max_num_rules
 
     def fit(self, X, y):
-
-        self.X = X
-        self.y = y
-
-        X_rem = self.X
-        y_rem = self.y
-
-        rule_list = []
-        # loop until data is all covered or target is unique
-        while (X_rem.shape[0] > self.remaining_data) and (
-            self.rule_entropy(y_rem) > self.entropy_threshold
-        ):
-            print("LOOP_i", X_rem.shape[0], self.rule_entropy(y_rem))
-            best_new_rule_significance = 1
-            entropy_gain = 100
-            rules_to_specialise = []
-            existing_results = pd.DataFrame()
-
-            # search rule space until rule best_new_rule_significance = 1
-            # significance is lower than user set boundary(0.5 for testing)
-            while (best_new_rule_significance > self.min_significance) and (
-                entropy_gain > 0
-            ):
-                print("loop", best_new_rule_significance, entropy_gain)
-
-                trimmed_rule_results = self.evaluate_beam_rules(
-                    rules_to_specialise, X_rem, y_rem
-                )
-
-                # append newly discovered rules to existing ones
-                # order them and then take best X(3 for testing)
-
-                existing_results = existing_results.append(trimmed_rule_results)
-                existing_results = self.order_rules(existing_results).iloc[0:2]
-
-                # update 'rules to specialise' and significance value of best new rule
-                rules_to_specialise = trimmed_rule_results["rule"]
-
-                # The condition to exit the inner loop.
-                ## Get the significance of the best rule
-                best_new_rule_significance = trimmed_rule_results[
-                    "significance"
-                ].values[0]
-
-                entropy_gain = trimmed_rule_results["entropy_gain"].values[0]
-
-            best_rule = (
-                existing_results["rule"].iloc[0],
-                existing_results["predict_class"].iloc[0],
-                existing_results["num_insts_covered"].iloc[0],
-            )
-            print(best_rule[0])
-            X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
-            rule_list.append(best_rule)
-
-        # return rule_list
-        self.rule_list = rule_list
-        print("LOOP_f", X_rem.shape[0], self.rule_entropy(y_rem))
-        return self
-
-    def cn_fit(self, X, y):
         self.rule_list = []
 
         self.X = X
@@ -111,10 +50,12 @@ class CN2algorithm:
             len(self.rule_list) < self.max_num_rules
         ):
             best_cplx = self.find_best_complex(X_rem, y_rem)
-            X_rem, y_rem = self.complex_coverage(best_cplx, X_rem, y_rem, operator=">")
+            X_rem, y_rem, y_left = self.complex_coverage(
+                best_cplx, X_rem, y_rem, operator=">", y_inverse=True
+            )
 
             # This only works for classification at the moment
-            prob = sum(y_rem.values) / len(y_rem.values)
+            prob = sum(y_left.values) / len(y_left.values)
             self.rule_list.append([best_cplx, prob])
             print(self.rule_list)
         return self
@@ -129,8 +70,6 @@ class CN2algorithm:
             and (len(cplx) < self.max_star_size)
         ):
             beam_results = self.evaluate_beam_rules(cplx, X_data, y_data)
-
-            print("evaluation done")
 
             # Get the best rule
             cplx = beam_results["rule"].iloc[0]
@@ -215,10 +154,8 @@ class CN2algorithm:
         # ordered_rules_and_stats = dataFrame_of_rules.sort_values(["entropy", "length", "num_insts_covered"], ascending=[True, True, False])
         # ordered_rules_and_stats = ordered_rules_and_stats.reset_index(drop=True)
 
-        return dataFrame_of_rules.sort_values(
-            ["entropy_gain", "length", "num_insts_covered"],
-            ascending=[True, False, False],
-        ).reset_index(drop=True)
+        return dataFrame_of_rules.sort_values("entropy_gain")
+        # return dataFrame_of_rules.sort_values(["entropy_gain", "length", "num_insts_covered"],ascending=[True, False, False],).reset_index(drop=True)
 
     def get_splits(self, data):
         """function to return the first set
@@ -292,7 +229,7 @@ class CN2algorithm:
         it returns False -- why?
         """
         if len(passed_complex) < 1:
-            print("LEN PAASSED COMPLEX NULL")
+            warn("Passed a complex with length <1")
 
         atts_used_in_rule = []
         for selector in passed_complex:
@@ -301,7 +238,7 @@ class CN2algorithm:
         # Check if there are duplicates
         # If there are return FALSE???
         if len(set(atts_used_in_rule)) < len(atts_used_in_rule):
-            # print("THERE ARE DUPLICATED SELECTORS")
+            warn("THERE ARE DUPLICATED SELECTORS")
             return False
 
         # Get all the values by column in the rule dict
@@ -317,7 +254,9 @@ class CN2algorithm:
             rule[att] = [val]
         return rule
 
-    def complex_coverage(self, passed_complex, X_data, y_data, operator="<="):
+    def complex_coverage(
+        self, passed_complex, X_data, y_data, operator="<=", y_inverse=False
+    ):
         """Returns set of instances of the data
         which complex (rule) covers as a dataframe.
         """
@@ -330,18 +269,29 @@ class CN2algorithm:
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] <= cond[1]]
                 y_rest = y_data[X_data[cond[0]] <= cond[1]]
+                if y_inverse:
+                    y_lefts = y_data[~(X_data[cond[0]] <= cond[1])]
+
         elif operator == "<":
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] < cond[1]]
                 y_rest = y_data[X_data[cond[0]] < cond[1]]
+                if y_inverse:
+                    y_lefts = y_data[~(X_data[cond[0]] < cond[1])]
         elif operator == ">=":
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] >= cond[1]]
                 y_rest = y_data[X_data[cond[0]] >= cond[1]]
+                if y_inverse:
+                    y_left = y_data[~(X_data[cond[0]] < cond[1])]
         elif operator == ">":
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] > cond[1]]
                 y_rest = y_data[X_data[cond[0]] > cond[1]]
+                if y_inverse:
+                    y_lefts = y_data[~(X_data[cond[0]] < cond[1])]
+        if y_inverse:
+            return X_rest, y_rest, y_inverse
 
         return X_rest, y_rest
 
@@ -435,6 +385,65 @@ class CN2algorithm:
             num_instances + num_classes
         )
         return laplace_accuracy_2
+
+    def fit_old(self, X, y):
+
+        self.X = X
+        self.y = y
+
+        X_rem = self.X
+        y_rem = self.y
+
+        rule_list = []
+        # loop until data is all covered or target is unique
+        while (X_rem.shape[0] > self.remaining_data) and (
+            self.rule_entropy(y_rem) > self.entropy_threshold
+        ):
+            best_new_rule_significance = 1
+            entropy_gain = 100
+            rules_to_specialise = []
+            existing_results = pd.DataFrame()
+
+            # search rule space until rule best_new_rule_significance = 1
+            # significance is lower than user set boundary(0.5 for testing)
+            while (best_new_rule_significance > self.min_significance) and (
+                entropy_gain > 0
+            ):
+
+                trimmed_rule_results = self.evaluate_beam_rules(
+                    rules_to_specialise, X_rem, y_rem
+                )
+
+                # append newly discovered rules to existing ones
+                # order them and then take best X(3 for testing)
+
+                existing_results = existing_results.append(trimmed_rule_results)
+                existing_results = self.order_rules(existing_results).iloc[0:2]
+
+                # update 'rules to specialise' and significance value of best new rule
+                rules_to_specialise = trimmed_rule_results["rule"]
+
+                # The condition to exit the inner loop.
+                ## Get the significance of the best rule
+                best_new_rule_significance = trimmed_rule_results[
+                    "significance"
+                ].values[0]
+
+                entropy_gain = trimmed_rule_results["entropy_gain"].values[0]
+
+            best_rule = (
+                existing_results["rule"].iloc[0],
+                existing_results["predict_class"].iloc[0],
+                existing_results["num_insts_covered"].iloc[0],
+            )
+            print(best_rule[0])
+            X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
+            rule_list.append(best_rule)
+
+        # return rule_list
+        self.rule_list = rule_list
+        print("LOOP_f", X_rem.shape[0], self.rule_entropy(y_rem))
+        return self
 
     def test_fitted_model(self, rule_list, data_set="default"):
         """
