@@ -283,13 +283,13 @@ class CN2algorithm:
                 X_rest = X_data[X_data[cond[0]] >= cond[1]]
                 y_rest = y_data[X_data[cond[0]] >= cond[1]]
                 if y_inverse:
-                    y_left = y_data[~(X_data[cond[0]] < cond[1])]
+                    y_left = y_data[~(X_data[cond[0]] >= cond[1])]
         elif operator == ">":
             for cond in passed_complex:
                 X_rest = X_data[X_data[cond[0]] > cond[1]]
                 y_rest = y_data[X_data[cond[0]] > cond[1]]
                 if y_inverse:
-                    y_lefts = y_data[~(X_data[cond[0]] < cond[1])]
+                    y_lefts = y_data[~(X_data[cond[0]] > cond[1])]
         if y_inverse:
             return X_rest, y_rest, y_lefts
 
@@ -436,13 +436,13 @@ class CN2algorithm:
                 existing_results["predict_class"].iloc[0],
                 existing_results["num_insts_covered"].iloc[0],
             )
-            print(best_rule[0])
+
             X_rem, y_rem = self.complex_coverage(best_rule[0], X_rem, y_rem)
             rule_list.append(best_rule)
 
         # return rule_list
         self.rule_list = rule_list
-        print("LOOP_f", X_rem.shape[0], self.rule_entropy(y_rem))
+
         return self
 
     def test_fitted_model(self, rule_list, data_set="default"):
