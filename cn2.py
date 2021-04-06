@@ -20,6 +20,7 @@ class CN2algorithm(BaseEstimator):
         remaining_data=1,
         entropy_threshold=0,
         max_num_rules=5,
+        min_data_rule = 1
     ):
         """
         constructor: partitions data into train and test sets, sets the minimum accepted significance value
@@ -39,6 +40,7 @@ class CN2algorithm(BaseEstimator):
         self.remaining_data = remaining_data
         self.entropy_threshold = entropy_threshold
         self.max_num_rules = max_num_rules
+        self.min_data_rule = min_data_rule
 
     def fit(self, X, y):
 
@@ -86,7 +88,7 @@ class CN2algorithm(BaseEstimator):
         entropy_gain = 100
 
         while (
-            (X_data.shape[0] > 1)
+            (X_data.shape[0] > self.min_data_rule)
             and (entropy_gain > self.entropy_threshold)
             and (len(cplx) < self.max_star_size)
         ):
