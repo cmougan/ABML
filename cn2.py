@@ -219,6 +219,27 @@ class CN2algorithm:
 
         return provisional_specialisations
 
+    def check_rule_datapoint(self, datapoint):
+
+        if datapoint.shape[0] != 1:
+            raise ValueError("Datapoint is more than one.")
+
+        for rule in self.rule_list:
+            for cond in rule[0]:
+                datapoint = datapoint[datapoint[cond[0]] <= cond[1]]
+            if datapoint.shape[0] == 1:
+                print("magic")
+                return rule[1]
+        warn("Datapoint not in rules")
+        return 0
+
+    def predict(X_test):
+
+        preds = []
+        for index, row in X_test.iterrows():
+            preds.append(self.check_rule_datapoint(pd.DataFrame([row])))
+        return preds
+
     def build_rule(self, passed_complex):
         """
         Carlos: I have no clue of why this is here
@@ -295,7 +316,7 @@ class CN2algorithm:
 
         return X_rest, y_rest
 
-    def check_rule_datapoint(self, datapoint, complex):
+    def check_rule_datapoint_old(self, datapoint, complex):
         """
         Function to check if a given data point satisfies
         the conditions of a given complex. Data point
@@ -500,28 +521,3 @@ class CN2algorithm:
             [r for r in results["rule_acc"] if r != 0]
         )
         return results, overall_accuracy
-
-
-if __name__ == "aa":
-    """
-    main method to test algorithm on 4 data sets.
-    """
-    lenseFit = CN2algorithm("train_set_lense.csv", "test_set_lense.csv")
-    lenseRules = lenseFit.fit_CN2()
-    lenseTest = lenseFit.test_fitted_model(lenseRules, lenseFit.test_set)[0]
-    lenseTest.to_csv("lense_test_results.csv")
-
-    zooFit = CN2algorithm("train_set_zoo.csv", "test_set_zoo.csv")
-    zooRules = zooFit.fit_CN2()
-    zooTest = zooFit.test_fitted_model(zooRules, zooFit.test_set)[0]
-    zooTest.to_csv("zoo_test_results.csv")
-
-    tttFit = CN2algorithm("train_set_ttt.csv", "test_set_ttt.csv")
-    tttRules = tttFit.fit_CN2()
-    tttTest = tttFit.test_fitted_model(tttRules, tttFit.test_set)[0]
-    tttTest.to_csv("ttt_test_results.csv")
-
-    votingFit = CN2algorithm("train_set_voting.csv", "test_set_voting.csv")
-    votingRules = votingFit.fit_CN2()
-    votingTest = votingFit.test_fitted_model(votingRules, votingFit.test_set)[0]
-    votingTest.to_csv("voting_test_results.csv")
